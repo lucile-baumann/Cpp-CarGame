@@ -61,7 +61,7 @@ GLuint vboi_object_ville = 0;
 GLuint texture_id_object_ville=0;
 int nbr_triangle_object_ville;
 
-
+int count_time;
 
 //Matrice de transformation
 struct transformation
@@ -88,6 +88,7 @@ mat4 projection;
 float angle_x_model_1 = 0.0f;
 float angle_y_model_1 = 0.0f;
 float angle_view = 0.0f;
+float angle_view2 = 0.0f;
 
 
 void load_texture(const char* filename,GLuint *texture_id);
@@ -96,14 +97,14 @@ void init_model_1();
 void init_model_2();
 void init_model_3();
 
-void init_model_route();
+//void init_model_route();
 void init_model_voiture();
 
 void draw_model_1();
 void draw_model_2();
 void draw_model_3();
 
-void draw_model_route();
+//void draw_model_route();
 void draw_model_voiture();
 
 static void init()
@@ -117,22 +118,24 @@ static void init()
     glUniformMatrix4fv(get_uni_loc(shader_program_id,"projection"),1,false,pointeur(projection)); PRINT_OPENGL_ERROR();
 
     //centre de rotation de la 'camera' (les objets sont centres en z=-2)
-    transformation_view.rotation_center = vec3(0.0f,0.0f,-2.0f);
+    //transformation_view.rotation_center = vec3(0.0f,0.0f,0.0f);
+    //transformation_view.rotation = matrice_rotation(90.0f*M_PI/180.0f , 0.0f,1.0f,0.0f);
 
     //activation de la gestion de la profondeur
     glEnable(GL_DEPTH_TEST); PRINT_OPENGL_ERROR();
 
     // Charge modele 1 sur la carte graphique
-    init_model_1();
+    //init_model_1();
     // Charge modele 2 sur la carte graphique
-    //init_model_2();
+    init_model_2();
     // Charge modele 3 sur la carte graphique
     //init_model_3();
 
     // Charge model route
     //init_model_route();
     // Charge model voiture
-    //init_model_voiture();
+    init_model_voiture();
+    //transformation_model_1.translation.x=-10.0f;
 }
 
 
@@ -155,20 +158,23 @@ static void display_callback()
         //envoie de la translation
         vec3 tv = transformation_view.translation;
         glUniform4f(get_uni_loc(shader_program_id,"translation_view") , tv.x,tv.y,tv.z , 0.0f); PRINT_OPENGL_ERROR();
+
+        glUniform1i(get_uni_loc(shader_program_id,"time"),0);                                                                  PRINT_OPENGL_ERROR();
+
     }
 
 
     // Affiche le modele numero 1 (dinosaure)
-    draw_model_1();
+    //draw_model_1();
     // Affiche le modele numero 2 (sol)
-    //draw_model_2();
+    draw_model_2();
     // Affiche le modele numero 3 (monstre)
     //draw_model_3();
 
     // Affiche le modele de la route
     //draw_model_route();
     // Affiche le modele de la voiture
-    //draw_model_voiture();
+    draw_model_voiture();
 
     //Changement de buffer d'affichage pour eviter un effet de scintillement
     glutSwapBuffers();
@@ -183,7 +189,7 @@ static void keyboard_callback(unsigned char key, int, int)
 {
     float d_angle=0.1f;
     float dz=0.5f;
-
+    vec3 axe = vec3(0.0f, 0.0f,0.0f);
     //quitte le programme si on appuie sur les touches 'q', 'Q', ou 'echap'
     switch (key)
     {
@@ -192,41 +198,37 @@ static void keyboard_callback(unsigned char key, int, int)
     case 27:
         exit(0);
         break;
-
-    case 'o':
-        angle_x_model_1 += d_angle;
-        break;
-    case 'l':
-        angle_x_model_1 -= d_angle;
-        break;
-
-    case 'k':
-        angle_y_model_1 += d_angle;
-        break;
-    case 'm':
-        angle_y_model_1 -= d_angle;
-        break;
-
-
     case 's':
         angle_view += d_angle;
+        axe.y = 1.0f;
+        transformation_view.rotation = matrice_rotation(angle_view , axe.x,axe.y,axe.z);
         break;
     case 'f':
         angle_view -= d_angle;
+        axe.y = 1.0f;
+        transformation_view.rotation = matrice_rotation(angle_view , axe.x,axe.y,axe.z);
         break;
-
-
     case 'e':
         transformation_view.translation.z += dz;
         break;
     case 'd':
         transformation_view.translation.z -= dz;
         break;
-
+    case 'r':
+        angle_view2 += d_angle;
+        axe.z = 1.0f;
+        transformation_view.rotation = matrice_rotation(angle_view2 , axe.x,axe.y,axe.z);
+        break;
+    case 'w':
+        angle_view2 -= d_angle;
+        axe.z = 1.0f;
+        transformation_view.rotation = matrice_rotation(angle_view2, axe.x,axe.y,axe.z);
+        break;
     }
 
-    transformation_model_1.rotation = matrice_rotation(angle_y_model_1 , 0.0f,1.0f,0.0f) * matrice_rotation(angle_x_model_1 , 1.0f,0.0f,0.0f);
-    transformation_view.rotation = matrice_rotation(angle_view , 0.0f,1.0f,0.0f);
+
+
+
 }
 
 /*****************************************************************************\
@@ -234,23 +236,22 @@ static void keyboard_callback(unsigned char key, int, int)
 \*****************************************************************************/
 static void special_callback(int key, int,int)
 {
-    float dL=0.03f;
+    float dL=0.1f;
     switch (key)
     {
     case GLUT_KEY_UP:
-        transformation_model_1.translation.y += dL; //rotation avec la touche du haut
+        count_time + 100; //rotation avec la touche du haut
         break;
     case GLUT_KEY_DOWN:
-        transformation_model_1.translation.y -= dL; //rotation avec la touche du bas
+        count_time --; //rotation avec la touche du bas
         break;
     case GLUT_KEY_LEFT:
-        transformation_model_1.translation.x -= dL; //rotation avec la touche de gauche
+        transformation_model_1.translation.z += dL; //rotation avec la touche de gauche
         break;
     case GLUT_KEY_RIGHT:
-        transformation_model_1.translation.x += dL; //rotation avec la touche de droite
+        transformation_model_1.translation.z -= dL; //rotation avec la touche de droite
         break;
     }
-
 
     //reactualisation de l'affichage
     glutPostRedisplay();
@@ -264,6 +265,8 @@ static void timer_callback(int)
 {
     //demande de rappel de cette fonction dans 25ms
     glutTimerFunc(25, timer_callback, 0);
+
+    count_time++;
 
     //reactualisation de l'affichage
     glutPostRedisplay();
@@ -370,6 +373,8 @@ void draw_model_2()
 
         vec3 t = transformation_model_2.translation;
         glUniform4f(get_uni_loc(shader_program_id,"translation_model") , t.x,t.y,t.z , 0.0f);                                     PRINT_OPENGL_ERROR();
+
+        glUniform1i(get_uni_loc(shader_program_id,"time"),count_time);                                                                  PRINT_OPENGL_ERROR();
     }
 
     //placement des VBO
@@ -441,6 +446,50 @@ void draw_model_3()
     }
 }
 
+void draw_model_voiture()
+{
+
+    //envoie des parametres uniformes
+    {
+        glUniformMatrix4fv(get_uni_loc(shader_program_id,"rotation_model"),1,false,pointeur(transformation_model_1.rotation));    PRINT_OPENGL_ERROR();
+
+        vec3 c = transformation_model_1.rotation_center;
+        glUniform4f(get_uni_loc(shader_program_id,"rotation_center_model") , c.x,c.y,c.z , 0.0f);                                 PRINT_OPENGL_ERROR();
+
+        vec3 t = transformation_model_1.translation;
+        glUniform4f(get_uni_loc(shader_program_id,"translation_model") , t.x,t.y,t.z , 0.0f);                                     PRINT_OPENGL_ERROR();
+
+        glUniform1i(get_uni_loc(shader_program_id,"time"),0);                                                                  PRINT_OPENGL_ERROR();
+    }
+
+    //placement des VBO
+    {
+        //selection du VBO courant
+        glBindBuffer(GL_ARRAY_BUFFER,vbo_object_1);                                                    PRINT_OPENGL_ERROR();
+
+        // mise en place des differents pointeurs
+        glEnableClientState(GL_VERTEX_ARRAY);                                                          PRINT_OPENGL_ERROR();
+        glVertexPointer(3, GL_FLOAT, sizeof(vertex_opengl), 0);                                        PRINT_OPENGL_ERROR();
+
+        glEnableClientState(GL_NORMAL_ARRAY); PRINT_OPENGL_ERROR();                                    PRINT_OPENGL_ERROR();
+        glNormalPointer(GL_FLOAT, sizeof(vertex_opengl), buffer_offset(sizeof(vec3)));                 PRINT_OPENGL_ERROR();
+
+        glEnableClientState(GL_COLOR_ARRAY); PRINT_OPENGL_ERROR();                                     PRINT_OPENGL_ERROR();
+        glColorPointer(3,GL_FLOAT, sizeof(vertex_opengl), buffer_offset(2*sizeof(vec3)));              PRINT_OPENGL_ERROR();
+
+        glEnableClientState(GL_TEXTURE_COORD_ARRAY); PRINT_OPENGL_ERROR();                             PRINT_OPENGL_ERROR();
+        glTexCoordPointer(2,GL_FLOAT, sizeof(vertex_opengl), buffer_offset(3*sizeof(vec3)));           PRINT_OPENGL_ERROR();
+
+    }
+
+    //affichage
+    {
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,vboi_object_1);                           PRINT_OPENGL_ERROR();
+        glBindTexture(GL_TEXTURE_2D, texture_id_object_1);                             PRINT_OPENGL_ERROR();
+        glDrawElements(GL_TRIANGLES, 3*nbr_triangle_object_1, GL_UNSIGNED_INT, 0);     PRINT_OPENGL_ERROR();
+    }
+
+}
 
 void init_model_1()
 {
@@ -492,10 +541,10 @@ void init_model_2()
     //Creation manuelle du model 2
 
     //coordonnees geometriques des sommets
-    vec3 p0=vec3(-25.0f,-0.9f,-25.0f);
-    vec3 p1=vec3( 25.0f,-0.9f,-25.0f);
-    vec3 p2=vec3( 25.0f,-0.9f, 25.0f);
-    vec3 p3=vec3(-25.0f,-0.9f, 25.0f);
+    vec3 p0 = vec3(0.0f,-0.9f,-5.0f);
+    vec3 p1 = vec3( 40.0f,-0.9f,-5.0f);
+    vec3 p2 = vec3( 40.0f,-0.9f, 5.0f);
+    vec3 p3 = vec3(0.0f,-0.9f, 5.0f);
 
     //normales pour chaque sommet
     vec3 n0=vec3(0.0f,1.0f,0.0f);
@@ -547,7 +596,7 @@ void init_model_2()
     glBufferData(GL_ELEMENT_ARRAY_BUFFER,sizeof(index),index,GL_STATIC_DRAW);  PRINT_OPENGL_ERROR();
 
     // Chargement de la texture
-    load_texture("../data/grass.tga",&texture_id_object_2);
+    load_texture("../data/road.tga",&texture_id_object_2);
 
 }
 
@@ -595,6 +644,50 @@ void init_model_3()
 
 }
 
+void init_model_voiture()
+{
+    // Chargement d'un maillage a partir d'un fichier
+    mesh m = load_obj_file("../data/Audi_R8.obj");
+
+    // Affecte une transformation sur les sommets du maillage
+    float s = 1.0f;
+    mat4 transform = mat4(   s, 0.0f, 0.0f, 3.0f,
+                          0.0f,    s, 0.0f,-0.9f,
+                          0.0f, 0.0f,   s , 0.0f,
+                          0.0f, 0.0f, 0.0f, 1.0f);
+    apply_deformation(&m,transform);
+
+    // Centre la rotation du modele 1 autour de son centre de gravite approximatif
+    transformation_model_1.rotation_center = vec3(3.0f,-0.5f,0.0f);
+
+    // Calcul automatique des normales du maillage
+    update_normals(&m);
+    // Les sommets sont affectes a une couleur blanche
+    fill_color(&m,vec3(1.0f,1.0f,1.0f));
+
+    //attribution d'un buffer de donnees (1 indique la création d'un buffer)
+    glGenBuffers(1,&vbo_object_1); PRINT_OPENGL_ERROR();
+    //affectation du buffer courant
+    glBindBuffer(GL_ARRAY_BUFFER,vbo_object_1); PRINT_OPENGL_ERROR();
+    //copie des donnees des sommets sur la carte graphique
+    glBufferData(GL_ARRAY_BUFFER,m.vertex.size()*sizeof(vertex_opengl),&m.vertex[0],GL_STATIC_DRAW); PRINT_OPENGL_ERROR();
+
+
+    //attribution d'un autre buffer de donnees
+    glGenBuffers(1,&vboi_object_1); PRINT_OPENGL_ERROR();
+    //affectation du buffer courant (buffer d'indice)
+    glBindBuffer(GL_ELEMENT_ARRAY_BUFFER,vboi_object_1); PRINT_OPENGL_ERROR();
+    //copie des indices sur la carte graphique
+    glBufferData(GL_ELEMENT_ARRAY_BUFFER,m.connectivity.size()*sizeof(triangle_index),&m.connectivity[0],GL_STATIC_DRAW); PRINT_OPENGL_ERROR();
+
+    // Nombre de triangles de l'objet 1
+    nbr_triangle_object_1 = m.connectivity.size();
+
+    // Chargement de la texture
+    load_texture("../data/white.tga",&texture_id_object_1);
+
+
+}
 
 void load_texture(const char* filename,GLuint *texture_id)
 {

@@ -6,8 +6,9 @@ varying vec3 normale;
 varying vec4 color;
 
 uniform sampler2D texture;
+uniform int time;
 
-vec3 light=vec3(0.5,0.5,5.0);
+vec3 light = vec3(0.5,0.5,8.0);
 
 
 void main (void)
@@ -27,6 +28,7 @@ void main (void)
 
     //recuperation de la texture
     vec2 tex_coord     = gl_TexCoord[0].xy;
+    tex_coord.x +=time/50.0; // Defilement de la texture
     vec4 color_texture = texture2D(texture,tex_coord);
     vec4 color_final   = color*color_texture;
 
