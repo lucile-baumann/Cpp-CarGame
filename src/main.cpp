@@ -38,30 +38,42 @@
 GLuint shader_program_id;
 
 //identifiants pour object 1
-GLuint vbo_object_1=0;
+GLuint vbo_object_1 = 0;
 GLuint vboi_object_1 = 0;
-GLuint texture_id_object_1=0;
+GLuint texture_id_object_1 = 0;
 int nbr_triangle_object_1;
 
 //identifiants pour object 2
-GLuint vbo_object_2=0;
-GLuint vboi_object_2=0;
-GLuint texture_id_object_2=0;
+GLuint vbo_object_2 = 0;
+GLuint vboi_object_2 = 0;
+GLuint texture_id_object_2 = 0;
 int nbr_triangle_object_2;
 
 //identifiants pour object 3
-GLuint vbo_object_3=0;
-GLuint vboi_object_3=0;
-GLuint texture_id_object_3=0;
+GLuint vbo_object_3 = 0;
+GLuint vboi_object_3 = 0;
+GLuint texture_id_object_3 = 0;
 int nbr_triangle_object_3;
 
 //identifiants pour object ville
-GLuint vbo_object_ville=0;
+GLuint vbo_object_ville = 0;
 GLuint vboi_object_ville = 0;
-GLuint texture_id_object_ville=0;
+GLuint texture_id_object_ville = 0;
 int nbr_triangle_object_ville;
 
-int count_time;
+//variables time
+int count_time = 0;
+int tmp_time;
+
+//variable vitesse
+int speed;
+int vitesse = 180;
+
+//variable score
+int score = 0;
+
+//variable projectiles
+int nbr_projectile = 5;
 
 //Matrice de transformation
 struct transformation
@@ -103,9 +115,33 @@ void init_model_voiture();
 void draw_model_1();
 void draw_model_2();
 void draw_model_3();
-
+void draw_time();
+void draw_score();
+void draw_speed();
 //void draw_model_route();
 void draw_model_voiture();
+
+void vBitmapOutput(float x, float y, float z, char *string, void *font)
+{
+        int len,i; // len donne la longueur de la chaîne de caractères
+
+        //envoie des parametres uniformes
+        {
+            glUniformMatrix4fv(get_uni_loc(shader_program_id,"rotation_model"),1,false,pointeur(transformation_model_2.rotation));    PRINT_OPENGL_ERROR();
+
+            vec3 c = transformation_model_2.rotation_center;
+            glUniform4f(get_uni_loc(shader_program_id,"rotation_center_model") , c.x,c.y,c.z , 0.0f);                                 PRINT_OPENGL_ERROR();
+
+            vec3 t = transformation_model_2.translation;
+            glUniform4f(get_uni_loc(shader_program_id,"translation_model") , t.x,t.y,t.z , 0.0f);                                     PRINT_OPENGL_ERROR();
+
+            glUniform1i(get_uni_loc(shader_program_id,"time"),speed);                                                                 PRINT_OPENGL_ERROR();
+        }
+
+        glRasterPos3f(x,y,z); // Positionne le premier caractère de la chaîne
+        len = (int) strlen(string); // Calcule la longueur de la chaîne
+        for (i = 0; i < len; i++) glutBitmapCharacter(font,string[i]); // Affiche chaque caractère de la chaîne
+}
 
 static void init()
 {
@@ -120,8 +156,8 @@ static void init()
     //centre de rotation de la 'camera' (les objets sont centres en z=-2)
     transformation_view.rotation_center = vec3(0.0f,0.0f,0.0f);
     transformation_view.rotation = matrice_rotation(90.0f*M_PI/180.0f , 0.0f,1.0f,0.0f);
-
     transformation_view.translation += vec3(0.0f,-1.0f,-2.0f);
+
     //activation de la gestion de la profondeur
     glEnable(GL_DEPTH_TEST); PRINT_OPENGL_ERROR();
 
@@ -129,11 +165,11 @@ static void init()
     //init_model_1();
     // Charge modele 2 sur la carte graphique
     init_model_2();
-    // Charge modele 3 sur la carte graphique
     //init_model_3();
 
     // Charge model route
     //init_model_route();
+    // Charge modele 3 sur la carte graphique
     // Charge model voiture
     init_model_voiture();
     //transformation_model_1.translation.x=-10.0f;
@@ -144,7 +180,7 @@ static void init()
 static void display_callback()
 {
     //effacement des couleurs du fond d'ecran
-    glClearColor(0.9f, 0.9f, 0.9f, 1.0f);                 PRINT_OPENGL_ERROR();
+    glClearColor(0.0f, 0.0f, 0.0f, 1.0f);                 PRINT_OPENGL_ERROR();
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);   PRINT_OPENGL_ERROR();
 
     // Affecte les parametres uniformes de la vue (identique pour tous les modeles de la scene)
@@ -164,7 +200,14 @@ static void display_callback()
 
     }
 
-
+    // Affichage du temps
+    draw_time();
+    // Affichage du score
+    draw_score();
+    // Affichage vitesse
+    draw_speed();
+    //Affichage du nombre de projectiles
+    //draw_projectile();
     // Affiche le modele numero 1 (dinosaure)
     //draw_model_1();
     // Affiche le modele numero 2 (sol)
@@ -190,7 +233,6 @@ static void keyboard_callback(unsigned char key, int, int)
 {
     float d_angle=0.1f;
     float dz=0.5f;
-    vec3 axe = vec3(0.0f, 0.0f,0.0f);
     //quitte le programme si on appuie sur les touches 'q', 'Q', ou 'echap'
     switch (key)
     {
@@ -209,20 +251,20 @@ static void keyboard_callback(unsigned char key, int, int)
 \*****************************************************************************/
 static void special_callback(int key, int,int)
 {
-    float dL=0.1f;
+    float dL = 1.4f;
     switch (key)
     {
     case GLUT_KEY_UP:
-        count_time += 5; //rotation avec la touche du haut
+        speed += 5; //rotation avec la touche du haut
         break;
     case GLUT_KEY_DOWN:
-        count_time --; //rotation avec la touche du bas
+        speed --; //rotation avec la touche du bas
         break;
     case GLUT_KEY_LEFT:
-        transformation_model_1.translation.z += dL; //rotation avec la touche de gauche
+        transformation_model_1.translation.z -= dL; //rotation avec la touche de gauche
         break;
     case GLUT_KEY_RIGHT:
-        transformation_model_1.translation.z -= dL; //rotation avec la touche de droite
+        transformation_model_1.translation.z += dL; //rotation avec la touche de droite
         break;
     }
 
@@ -238,9 +280,12 @@ static void timer_callback(int)
 {
     //demande de rappel de cette fonction dans 25ms
     glutTimerFunc(25, timer_callback, 0);
-
-    count_time++;
-
+    tmp_time += 25;
+    if (tmp_time == 1000) {
+        tmp_time = 0;
+        count_time++;
+    }
+    speed++;
     //reactualisation de l'affichage
     glutPostRedisplay();
 }
@@ -289,7 +334,6 @@ int main(int argc, char** argv)
 
     return 0;
 }
-
 
 void draw_model_1()
 {
@@ -347,7 +391,7 @@ void draw_model_2()
         vec3 t = transformation_model_2.translation;
         glUniform4f(get_uni_loc(shader_program_id,"translation_model") , t.x,t.y,t.z , 0.0f);                                     PRINT_OPENGL_ERROR();
 
-        glUniform1i(get_uni_loc(shader_program_id,"time"),count_time);                                                                  PRINT_OPENGL_ERROR();
+        glUniform1i(get_uni_loc(shader_program_id,"time"),speed);                                                                 PRINT_OPENGL_ERROR();
     }
 
     //placement des VBO
@@ -462,6 +506,37 @@ void draw_model_voiture()
         glDrawElements(GL_TRIANGLES, 3*nbr_triangle_object_1, GL_UNSIGNED_INT, 0);     PRINT_OPENGL_ERROR();
     }
 
+}
+
+void draw_time() {
+    vBitmapOutput(5.0f, 4.5f, -3.5f, "time :", GLUT_BITMAP_HELVETICA_12);
+    char buffer[10]={'\0'};
+    sprintf(buffer, "%d", count_time); //%d is for integers
+    vBitmapOutput(5.0f, 4.5f , -3.0f, buffer, GLUT_BITMAP_HELVETICA_12);
+    vBitmapOutput(5.0f, 4.5f , -2.8f, "s", GLUT_BITMAP_HELVETICA_12);
+}
+
+void draw_score() {
+    // score
+    vBitmapOutput(5.0f, 4.5f, 2.5f, "score :", GLUT_BITMAP_HELVETICA_12);
+    char buffer[10]={'\0'};
+    sprintf(buffer, "%d", score); //%d is for integers
+    vBitmapOutput(5.0f, 4.5f , 3.1f, buffer, GLUT_BITMAP_HELVETICA_12);
+
+    // projectiles restant
+    vBitmapOutput(5.0f, 4.0f, 2.5f, "tir :", GLUT_BITMAP_HELVETICA_12);
+    char buffer2[10]={'\0'};
+    sprintf(buffer2, "%d", nbr_projectile); //%d is for integers
+    vBitmapOutput(5.0f, 4.0f , 2.8f, buffer2, GLUT_BITMAP_HELVETICA_12);
+    vBitmapOutput(5.0f, 4.0f,  3.0f, "/ 5", GLUT_BITMAP_HELVETICA_12);
+}
+
+void draw_speed() {
+    vBitmapOutput(5.0f, 4.0f, -3.5f, "speed :", GLUT_BITMAP_HELVETICA_12);
+    char buffer[10]={'\0'};
+    sprintf(buffer, "%d", 180); //%d is for integers
+    vBitmapOutput(5.0f, 4.0f , -2.9f, buffer, GLUT_BITMAP_HELVETICA_12);
+    vBitmapOutput(5.0f, 4.0f, -2.5f, "km/h", GLUT_BITMAP_HELVETICA_12);
 }
 
 void init_model_1()
@@ -626,7 +701,7 @@ void init_model_voiture()
     float s = 1.0f;
     mat4 transform = mat4(   s, 0.0f, 0.0f, 3.0f,
                           0.0f,    s, 0.0f,-0.9f,
-                          0.0f, 0.0f,   s , 0.0f,
+                          0.0f, 0.0f,   s , 0.8f,
                           0.0f, 0.0f, 0.0f, 1.0f);
     apply_deformation(&m,transform);
 
@@ -657,7 +732,7 @@ void init_model_voiture()
     nbr_triangle_object_1 = m.connectivity.size();
 
     // Chargement de la texture
-    load_texture("../data/AudiUV.tga",&texture_id_object_1);
+    load_texture("../data/white.tga",&texture_id_object_1);
 
 
 }
